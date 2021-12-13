@@ -28,6 +28,16 @@ public class StudentsUtilities {
                     }
                 }
 
+                if (value.has("sex")) {
+                    var gender = value.get("sex").getAsInt();
+                    if (gender == 1) {
+                        student.setGender(Gender.Female);
+                    }
+                    if(gender == 2){
+                        student.setGender(Gender.Male);
+                    }
+                }
+
                 var photo = value.get("photo_max").getAsString();
                 if (!photo.equals("")) {
                     student.setPhoto(photo);

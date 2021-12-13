@@ -2,10 +2,17 @@ package com.company;
 
 import java.util.Date;
 
+enum Gender {
+    Male,
+    Female,
+    None
+        };
+
 public class Person{
 
     private final String name;
     private final String surname;
+    private Gender gender;
     private String city;
     private String birthdate;
     private String photo;
@@ -18,6 +25,7 @@ public class Person{
         this.birthdate = "None";
         this.photo = "None";
         this.vkId = -1000;
+        gender = Gender.None;
     }
 
     @Override
@@ -63,5 +71,13 @@ public class Person{
 
     public void setCity(String city) {
         this.city = city;
+    }
+
+    public Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(Gender gender) {
+        this.gender = gender;
     }
 }
