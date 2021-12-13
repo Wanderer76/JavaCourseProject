@@ -35,7 +35,7 @@ public class VkApi {
         var members = new ArrayList<JsonObject>(memberIds.size());
         var maxCount = 0;
         while (maxCount<memberIds.size()){
-            var temp = new JsonParser().parse(vk.users().get(actor).userIds(memberIds.subList(maxCount,memberIds.size()))
+            var temp = new JsonParser().parse(vk.users().get(actor).userIds(memberIds.subList(maxCount,maxCount+(memberIds.size()-maxCount)%1000))
                     .fields(new Fields[]{Fields.BDATE,Fields.CITY,Fields.PHOTO_MAX}).execute().toString()).getAsJsonArray();
             temp.forEach(a->members.add(a.getAsJsonObject()));
             maxCount+=1000;

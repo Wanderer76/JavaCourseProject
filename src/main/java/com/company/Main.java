@@ -9,18 +9,18 @@ import java.util.List;
 public class Main {
 
     public static void main(String[] args) throws ClientException, ApiException, SQLException, ClassNotFoundException {
-        var s = new VkApi().find_users();
-        var students = StudentsUtilities.createStudentsWithVkData(s);
+        var students = StudentsUtilities.createStudentsWithVkData(new VkApi().find_users());
+       // SqLite.Conn();
+
         int index = 1;
         for (var i : students) {
+         //   SqLite.WriteDB(i);
             var output = index + ") " + i.getVkId() + ": " + i.getName() + " " + i.getSurname() + " " + i.getBirthdate() + " " + i.getCity() + i.getCourses();
-            System.out.println(i.toString());
+            System.out.println(output);
             index++;
         }
-
+       // SqLite.CloseDB();
        //List<Student> students = CSV.parseStudentsFromCSV("java-rtf.csv");
-
-
     }
 }
 

@@ -1,6 +1,8 @@
 package com.company;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SqLite {
     public static Connection conn;
@@ -21,54 +23,159 @@ public class SqLite {
     public static void CreateDB() throws ClassNotFoundException, SQLException
     {
 
-        statmt.execute("CREATE if not exists TABLE [person] (\n" +
-                "[personId] integer  PRIMARY KEY AUTOINCREMENT NOT NULL,\n" +
-                "[name] varchar(25)  NOT NULL,\n" +
-                "[surname] varchar(25)  NOT NULL,\n" +
-                "[city] varchar(25)  NOT NULL,\n" +
-                "[birthdate] varchar(25)  NOT NULL,\n" +
-                "[image] varchar(100)  NOT NULL,\n" +
-                "[vkId] integer  NOT NULL\n" +
-                ")");
-        statmt.execute("CREATE if not exists [student] (\n" +
-                "[id] integer  PRIMARY KEY AUTOINCREMENT NOT NULL,\n" +
-                "[personId_id] integer  NOT NULL,\n" +
-                "[studentId_id] bigint  NOT NULL\n" +
-                ")");
-        statmt.execute("CREATE if not exists TABLE [course] (\n" +
-                "[id] integer  PRIMARY KEY AUTOINCREMENT NOT NULL,\n" +
-                "[courseName] varchar(100)  NOT NULL,\n" +
-                "[maxScore] integer  NOT NULL,\n" +
-                "[courseGroup] varchar(100)  NOT NULL,\n" +
-                "[studentId] integer  NOT NULL,\n" +
-                "[themes_id] integer  NOT NULL\n" +
-                ")");
-        statmt.execute("CREATE if not exists TABLE [theme] (\n" +
-                "[theme_name] varchar(25)  NOT NULL,\n" +
-                "[studentMaxPoint] integer  NOT NULL,\n" +
-                "[maxPoint] integer  NOT NULL,\n" +
-                "[courseName] varchar(50)  NOT NULL,\n" +
-                "[themeId] integer  PRIMARY KEY AUTOINCREMENT NOT NULL,\n" +
-                "[tasks_id] bigint  NOT NULL\n" +
-                ")");
-        statmt.execute("CREATE if not exists TABLE [task] (\n" +
-                "[id] integer  PRIMARY KEY AUTOINCREMENT NOT NULL,\n" +
-                "[task_name] varchar(25)  NOT NULL,\n" +
-                "[score] integer  NOT NULL\n" +
-                ")");
+        statmt.execute("CREATE TABLE IF NOT EXISTS course\n" +
+                "(\n" +
+                "    id          integer not null\n" +
+                "        primary key autoincrement,\n" +
+                "    courseName  text    not null,\n" +
+                "    maxScore    integer not null,\n" +
+                "    courseGroup text    not null,\n" +
+                "    studentId   integer not null\n" +
+                ");");
+        statmt.execute("CREATE TABLE IF NOT EXISTS person\n" +
+                "(\n" +
+                "    personId  integer not null\n" +
+                "        primary key autoincrement,\n" +
+                "    name      text    not null,\n" +
+                "    surname   text    not null,\n" +
+                "    city      text    not null,\n" +
+                "    birthdate text    not null,\n" +
+                "    image     text    not null,\n" +
+                "    vkId      integer not null\n" +
+                ");");
+        statmt.execute("CREATE TABLE IF NOT EXISTS student\n" +
+                "(\n" +
+                "    student_id integer not null\n" +
+                "        references person,\n" +
+                "    course_id  integer not null\n" +
+                "        references course\n" +
+                ");");
+        statmt.execute("CREATE TABLE IF NOT EXISTS task\n" +
+                "(\n" +
+                "    id         integer not null\n" +
+                "        primary key autoincrement,\n" +
+                "    task_name  text    not null,\n" +
+                "    score      integer default 0 not null,\n" +
+                "    theme_name text    not null\n" +
+                "        references theme (theme_name)\n" +
+                ");");
+        statmt.execute("CREATE TABLE IF NOT EXISTS theme\n" +
+                "(\n" +
+                "    theme_name      text    not null,\n" +
+                "    studentMaxPoint integer not null,\n" +
+                "    maxPoint        integer not null,\n" +
+                "    course_id       integer not null\n" +
+                "        references course,\n" +
+                "    themeId         integer not null\n" +
+                "        primary key autoincrement\n" +
+                ");");
 
         System.out.println("Таблица создана или уже существует.");
     }
 
     // --------Заполнение таблицы--------
-    public static boolean WriteDB(String name,String surname) throws SQLException
+    public static boolean WriteDB(Student student) throws SQLException
     {
+        var courses = student.getCourses();
+
+
+        insertPerson(new String[]{student.getName(),student.getSurname(),student.getCity(),student.getBirthdate(),student.getPhoto(),String.valueOf(student.getVkId())});
+        var student_id = statmt.executeQuery("SELECT * FROM person WHERE name='"+student.getName()+"' and vkId="+student.getVkId()+";").getInt("personId");
+        var coursesIds = insertCourses(courses,student_id);
+
+        for(var id : coursesIds)
+        {
+            var query = "INSERT INTO student (student_id, course_id)\n" +
+                    "values (" + student_id+ ", "+ id+");";
+            try {
+                statmt.execute(query);
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
+
+        }
+
         //return statmt.execute("INSERT INTO 'users' ('name', 'surname') VALUES ('"+ name + "', '" +surname +"');");
         //statmt.execute("INSERT INTO 'users' ('name', 'phone') VALUES ('Vasya', 321789); ");
         //statmt.execute("INSERT INTO 'users' ('name', 'phone') VALUES ('Masha', 456123); ");
         //System.out.println("Таблица заполнена");
         return false;
     }
+
+    private static void insertPerson(String[] person) throws SQLException {
+        var builder = new StringBuilder();
+        for (var i : person) {
+            builder.append("'").append(i).append("'").append(", ");
+        }
+        builder.delete(builder.length() - 2, builder.length());
+        var query = "INSERT INTO person (name, surname, city, birthdate, image, vkId)\n" +
+                "values (" + builder.toString() + ");";
+        try {
+            statmt.execute(query);
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static List<Integer> insertCourses(List<Course> courses, int  student_id) throws SQLException {
+        var result = new ArrayList<Integer>();
+        for(var course : courses){
+            //---Записываем основные данные курса---------------------
+
+            var courseName = course.getName();//pk
+            var maxScore = course.getMaxScore();//yes
+            var group = course.getGroup();//yes
+
+            var courseQuery = "INSERT INTO course (courseName, maxScore, courseGroup, studentId)\n" +
+                    "values ('"+ courseName+"', " + maxScore+", '"+group+"', "+student_id+ ");";
+            try {
+                statmt.execute(courseQuery);
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
+            //------------------------
+            var courseId = statmt.executeQuery("SELECT * FROM course WHERE courseName='" + courseName+"' and studentId="+ student_id+";").getInt("id");
+            result.add(courseId);
+            for(var theme : course.getThemes()){
+                var themeName = theme.getName();
+                var studentMaxPoint = theme.getStudentMaxPoint();
+                var maxPoint = theme.getMaxPoint();
+
+                var themeQuery = "INSERT INTO theme (theme_name, studentMaxPoint, maxPoint, course_id)\n" +
+                        "values ('" +themeName+"', "+studentMaxPoint+ ", "+ maxPoint+", "+courseId+");";
+
+                try {
+                    statmt.execute(themeQuery);
+                } catch (SQLException e) {
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
+                }
+
+                for(var task: theme.getTasks()){
+                    var taskScore = task.getScore();
+                    var taskName = task.getName();
+
+                    var taskQuery = "INSERT INTO task (task_name, score, theme_name)\n" +
+                            "values ('"+taskName+"', "+taskScore+", '"+ themeName +"'"+ ");";
+
+                    try {
+                        statmt.execute(taskQuery);
+                    } catch (SQLException e) {
+                        System.out.println(e.getMessage());
+                        e.printStackTrace();
+                    }
+
+                }
+
+            }
+
+        }
+        return result;
+    }
+
 
     // -------- Вывод таблицы--------
     public static void ReadDB() throws ClassNotFoundException, SQLException
