@@ -5,13 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SqLite {
-    public static Connection conn;
-    public static Statement statmt;
-    public static ResultSet resSet;
+    private static Connection conn;
+    private static Statement statmt;
 
     // --------ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ--------
-    public static void Conn() throws ClassNotFoundException, SQLException
-    {
+    public static void connect() throws ClassNotFoundException, SQLException {
         conn = null;
         Class.forName("org.sqlite.JDBC");
         conn = DriverManager.getConnection("jdbc:sqlite:db.s3db");
@@ -20,8 +18,7 @@ public class SqLite {
     }
 
     // --------Создание таблицы--------
-    public static void CreateDB() throws ClassNotFoundException, SQLException
-    {
+    public static void createDB() throws SQLException {
 
         statmt.execute("CREATE TABLE IF NOT EXISTS course\n" +
                 "(\n" +
@@ -41,7 +38,8 @@ public class SqLite {
                 "    city      text    not null,\n" +
                 "    birthdate text    not null,\n" +
                 "    image     text    not null,\n" +
-                "    vkId      integer not null\n" +
+                "    vkId      integer not null,\n" +
+                " gender    integer default 0 not null" +
                 ");");
         statmt.execute("CREATE TABLE IF NOT EXISTS student\n" +
                 "(\n" +
@@ -74,19 +72,17 @@ public class SqLite {
     }
 
     // --------Заполнение таблицы--------
-    public static boolean WriteDB(Student student) throws SQLException
-    {
+    public static boolean writeDB(Student student) throws SQLException {
         var courses = student.getCourses();
 
 
-        insertPerson(new String[]{student.getName(),student.getSurname(),student.getCity(),student.getBirthdate(),student.getPhoto(),String.valueOf(student.getVkId())});
-        var student_id = statmt.executeQuery("SELECT * FROM person WHERE name='"+student.getName()+"' and vkId="+student.getVkId()+";").getInt("personId");
-        var coursesIds = insertCourses(courses,student_id);
+        insertPerson(new String[]{student.getName(), student.getSurname(), student.getCity(), student.getBirthdate(), student.getPhoto(), String.valueOf(student.getVkId()), String.valueOf(student.getGender())});
+        var student_id = statmt.executeQuery("SELECT * FROM person WHERE name='" + student.getName() + "' and vkId=" + student.getVkId() + ";").getInt("personId");
+        var coursesIds = insertCourses(courses, student_id);
 
-        for(var id : coursesIds)
-        {
+        for (var id : coursesIds) {
             var query = "INSERT INTO student (student_id, course_id)\n" +
-                    "values (" + student_id+ ", "+ id+");";
+                    "values (" + student_id + ", " + id + ");";
             try {
                 statmt.execute(query);
             } catch (SQLException e) {
@@ -96,20 +92,16 @@ public class SqLite {
 
         }
 
-        //return statmt.execute("INSERT INTO 'users' ('name', 'surname') VALUES ('"+ name + "', '" +surname +"');");
-        //statmt.execute("INSERT INTO 'users' ('name', 'phone') VALUES ('Vasya', 321789); ");
-        //statmt.execute("INSERT INTO 'users' ('name', 'phone') VALUES ('Masha', 456123); ");
-        //System.out.println("Таблица заполнена");
         return false;
     }
 
-    private static void insertPerson(String[] person) throws SQLException {
+    private static void insertPerson(String[] person) {
         var builder = new StringBuilder();
         for (var i : person) {
             builder.append("'").append(i).append("'").append(", ");
         }
         builder.delete(builder.length() - 2, builder.length());
-        var query = "INSERT INTO person (name, surname, city, birthdate, image, vkId)\n" +
+        var query = "INSERT INTO person (name, surname, city, birthdate, image, vkId, gender)\n" +
                 "values (" + builder.toString() + ");";
         try {
             statmt.execute(query);
@@ -119,9 +111,9 @@ public class SqLite {
         }
     }
 
-    private static List<Integer> insertCourses(List<Course> courses, int  student_id) throws SQLException {
+    private static List<Integer> insertCourses(List<Course> courses, int student_id) throws SQLException {
         var result = new ArrayList<Integer>();
-        for(var course : courses){
+        for (var course : courses) {
             //---Записываем основные данные курса---------------------
 
             var courseName = course.getName();//pk
@@ -129,7 +121,7 @@ public class SqLite {
             var group = course.getGroup();//yes
 
             var courseQuery = "INSERT INTO course (courseName, maxScore, courseGroup, studentId)\n" +
-                    "values ('"+ courseName+"', " + maxScore+", '"+group+"', "+student_id+ ");";
+                    "values ('" + courseName + "', " + maxScore + ", '" + group + "', " + student_id + ");";
             try {
                 statmt.execute(courseQuery);
             } catch (SQLException e) {
@@ -137,15 +129,15 @@ public class SqLite {
                 e.printStackTrace();
             }
             //------------------------
-            var courseId = statmt.executeQuery("SELECT * FROM course WHERE courseName='" + courseName+"' and studentId="+ student_id+";").getInt("id");
+            var courseId = statmt.executeQuery("SELECT * FROM course WHERE courseName='" + courseName + "' and studentId=" + student_id + ";").getInt("id");
             result.add(courseId);
-            for(var theme : course.getThemes()){
+            for (var theme : course.getThemes()) {
                 var themeName = theme.getName();
                 var studentMaxPoint = theme.getStudentMaxPoint();
                 var maxPoint = theme.getMaxPoint();
 
                 var themeQuery = "INSERT INTO theme (theme_name, studentMaxPoint, maxPoint, course_id)\n" +
-                        "values ('" +themeName+"', "+studentMaxPoint+ ", "+ maxPoint+", "+courseId+");";
+                        "values ('" + themeName + "', " + studentMaxPoint + ", " + maxPoint + ", " + courseId + ");";
 
                 try {
                     statmt.execute(themeQuery);
@@ -154,12 +146,12 @@ public class SqLite {
                     e.printStackTrace();
                 }
 
-                for(var task: theme.getTasks()){
+                for (var task : theme.getTasks()) {
                     var taskScore = task.getScore();
                     var taskName = task.getName();
 
                     var taskQuery = "INSERT INTO task (task_name, score, theme_name)\n" +
-                            "values ('"+taskName+"', "+taskScore+", '"+ themeName +"'"+ ");";
+                            "values ('" + taskName + "', " + taskScore + ", '" + themeName + "'" + ");";
 
                     try {
                         statmt.execute(taskQuery);
@@ -176,10 +168,21 @@ public class SqLite {
         return result;
     }
 
+    public static void cleanDb() {
+        try {
+            statmt.execute("delete from course");
+            statmt.execute("delete from person");
+            statmt.execute("delete from student");
+            statmt.execute("delete from task");
+            statmt.execute("delete from theme");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     // -------- Вывод таблицы--------
-    public static void ReadDB() throws ClassNotFoundException, SQLException
-    {
+    public static void readDB() throws ClassNotFoundException, SQLException {
         /*resSet = statmt.executeQuery("SELECT * FROM users");
 
         while(resSet.next())
@@ -196,12 +199,24 @@ public class SqLite {
         System.out.println("Таблица выведена");*/
     }
 
+    public static List<String> getCities(){
+        var result = new ArrayList<String>();
+        try {
+            var querySet = statmt.executeQuery("select city from person where city != 'None';");
+            while (querySet.next()){
+                result.add(querySet.getString("city"));
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
     // --------Закрытие--------
-    public static void CloseDB() throws ClassNotFoundException, SQLException
-    {
-        conn.close();
+    public static void closeDB() throws SQLException {
         statmt.close();
-        resSet.close();
+        conn.close();
 
         System.out.println("Соединения закрыты");
     }
