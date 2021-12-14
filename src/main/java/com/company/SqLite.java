@@ -1,8 +1,12 @@
 package com.company;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
 
 public class SqLite {
     private static Connection conn;
@@ -29,36 +33,34 @@ public class SqLite {
                 "    courseGroup text    not null,\n" +
                 "    studentId   integer not null\n" +
                 ");");
-        statmt.execute("CREATE TABLE IF NOT EXISTS person\n" +
-                "(\n" +
+        statmt.execute("CREATE TABLE IF NOT EXISTS person(\n" +
                 "    personId  integer not null\n" +
                 "        primary key autoincrement,\n" +
                 "    name      text    not null,\n" +
                 "    surname   text    not null,\n" +
                 "    city      text    not null,\n" +
-                "    birthdate text    not null,\n" +
+                "    birthdate date,\n" +
                 "    image     text    not null,\n" +
                 "    vkId      integer not null,\n" +
-                " gender    integer default 0 not null" +
+                "    gender    integer default 0 not null\n" +
                 ");");
-        statmt.execute("CREATE TABLE IF NOT EXISTS student\n" +
-                "(\n" +
+
+        statmt.execute("CREATE TABLE IF NOT EXISTS student(\n" +
                 "    student_id integer not null\n" +
                 "        references person,\n" +
                 "    course_id  integer not null\n" +
                 "        references course\n" +
                 ");");
-        statmt.execute("CREATE TABLE IF NOT EXISTS task\n" +
-                "(\n" +
-                "    id         integer not null\n" +
+        statmt.execute("CREATE TABLE IF NOT EXISTS task(\n" +
+                "    id        integer not null\n" +
                 "        primary key autoincrement,\n" +
-                "    task_name  text    not null,\n" +
-                "    score      integer default 0 not null,\n" +
-                "    theme_name text    not null\n" +
-                "        references theme (theme_name)\n" +
+                "    task_name text    not null,\n" +
+                "    score     integer default 0 not null,\n" +
+                "    theme_id  integer not null\n" +
+                "        references theme,\n" +
+                "    max_score integer default 0 not null\n" +
                 ");");
-        statmt.execute("CREATE TABLE IF NOT EXISTS theme\n" +
-                "(\n" +
+        statmt.execute("CREATE TABLE IF NOT EXISTS theme(\n" +
                 "    theme_name      text    not null,\n" +
                 "    studentMaxPoint integer not null,\n" +
                 "    maxPoint        integer not null,\n" +
@@ -77,7 +79,7 @@ public class SqLite {
 
 
         insertPerson(new String[]{student.getName(), student.getSurname(), student.getCity(), student.getBirthdate(), student.getPhoto(), String.valueOf(student.getVkId()), String.valueOf(student.getGender())});
-        var student_id = statmt.executeQuery("SELECT * FROM person WHERE name='" + student.getName() + "' and vkId=" + student.getVkId() + ";").getInt("personId");
+        var student_id = statmt.executeQuery("SELECT * FROM person WHERE name='" + student.getName() + "' and surname= '" + student.getSurname() + "' and vkId=" + student.getVkId() + ";").getInt("personId");
         var coursesIds = insertCourses(courses, student_id);
 
         for (var id : coursesIds) {
@@ -145,13 +147,14 @@ public class SqLite {
                     System.out.println(e.getMessage());
                     e.printStackTrace();
                 }
+                var themeId = statmt.executeQuery("SELECT * FROM theme WHERE theme_name='" + themeName + "' and course_id =" + courseId + ";").getInt("themeId");
 
                 for (var task : theme.getTasks()) {
                     var taskScore = task.getScore();
                     var taskName = task.getName();
 
-                    var taskQuery = "INSERT INTO task (task_name, score, theme_name)\n" +
-                            "values ('" + taskName + "', " + taskScore + ", '" + themeName + "'" + ");";
+                    var taskQuery = "INSERT INTO task (task_name, score, theme_id, max_score)\n" +
+                            "values ('" + taskName + "', " + taskScore + ", '" + themeId + "', " + task.getMaxScore() + ");";
 
                     try {
                         statmt.execute(taskQuery);
@@ -175,6 +178,7 @@ public class SqLite {
             statmt.execute("delete from student");
             statmt.execute("delete from task");
             statmt.execute("delete from theme");
+            System.out.println("База данных очищена");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -182,31 +186,161 @@ public class SqLite {
 
 
     // -------- Вывод таблицы--------
-    public static void readDB() throws ClassNotFoundException, SQLException {
-        /*resSet = statmt.executeQuery("SELECT * FROM users");
-
-        while(resSet.next())
-        {
-            int id = resSet.getInt("id");
-            String  name = resSet.getString("name");
-            String  surname = resSet.getString("surname");
-            System.out.println( "ID = " + id );
-            System.out.println( "name = " + name );
-            System.out.println( "phone = " + surname );
-            System.out.println();
-        }
-
-        System.out.println("Таблица выведена");*/
-    }
-
-    public static List<String> getCities(){
+    public static List<String> getCities() {
         var result = new ArrayList<String>();
         try {
             var querySet = statmt.executeQuery("select city from person where city != 'None';");
-            while (querySet.next()){
+            while (querySet.next()) {
                 result.add(querySet.getString("city"));
             }
 
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public static Map<Integer, Integer> getAges() {
+        var result = new HashMap<Integer, Integer>();
+        try {
+            var querySet = statmt.executeQuery("select birthdate from person where birthdate is not 'null';\n");
+            var dateFormat = new SimpleDateFormat("YYYY-MM-DD");
+            while (querySet.next()) {
+                var birthdate = (querySet.getString("birthdate"));
+                var today = LocalDate.now();
+                Period diff = Period.between(LocalDate.parse(birthdate, DateTimeFormatter.ISO_LOCAL_DATE), today);
+                var age = diff.getYears();
+                if (result.containsKey(age)) {
+                    result.put(age, result.get(age) + 1);
+                } else
+                    result.put(age, 1);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public static Map<String, Integer> getGenders() {
+        var result = new HashMap<String, Integer>();
+        try {
+            var maleQuerySet = statmt.executeQuery("select count(*) as 'male' from person where gender= 'Male';");
+            result.put("male", maleQuerySet.getInt("male"));
+            var femaleQuerySet = statmt.executeQuery("select count(*) as 'female' from person where gender = 'Female';");
+            result.put("female", femaleQuerySet.getInt("female"));
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public static int getCountOfSolevdTasksInTheme(Student student, Theme theme) {
+        var count = 0;
+        var query = "select count(*) as 'count' from person\n" +
+                "left join student on person.personId = student.student_id\n" +
+                "left join course on course.id = student.course_id\n" +
+                "left join theme  on course.id = theme.course_id and theme.theme_name like '%" + theme.getName() + "%'\n" +
+                "join task on task.theme_id = theme.themeId\n" +
+                "where person.name = '" + student.getName() + "' and person.surname='" + student.getSurname() + "' and task.max_score = task.score and length(task_name)>2;\n";
+        try {
+            count = statmt.executeQuery(query).getInt("count");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return count;
+    }
+
+    public static int getCountOfSolevdTasksInTheme(Student student, String themeName) {
+        var count = 0;
+        var query = "select count(*) as 'count' from person\n" +
+                "left join student on person.personId = student.student_id\n" +
+                "left join course on course.id = student.course_id\n" +
+                "left join theme  on course.id = theme.course_id and theme.theme_name like '%" + themeName + "%'\n" +
+                "join task on task.theme_id = theme.themeId\n" +
+                "where person.name = '" + student.getName() + "' and person.surname='" + student.getSurname() + "' and task.max_score = task.score " +
+                "and (task_name not like '%Контрольный вопрос%' and task_name not like '%Контрольные вопросы%' ) and length(task_name)>2;";
+        try {
+            count = statmt.executeQuery(query).getInt("count");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return count;
+    }
+
+    public static Map<String, Integer> getSolvedAnswers(String themeName) {
+        var query = "select person.name, person.surname, count(person.surname) as 'count' from person\n" +
+                "left join student on person.personId = student.student_id\n" +
+                "join course on course.id = student.course_id\n" +
+                "left join theme  on course.id = theme.course_id and theme.theme_name like '%" + themeName + "%'\n" +
+                "join task on task.theme_id = theme.themeId\n" +
+                "where task.max_score = task.score and length(task_name)>2 and task_name like '%Контрольный вопрос%'\n" +
+                "group by person.name, person.surname;";
+
+        var result = new HashMap<String, Integer>();
+
+        try {
+            var resultSet = statmt.executeQuery(query);
+
+            while (resultSet.next()) {
+                var surname = resultSet.getString("surname");
+                var name = resultSet.getString("name");
+                var count = resultSet.getInt("count");
+                result.put(surname + " " + name, count);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public static List<SolvedTasksByCityGender> getSolvedAnswerByGender(String themeName) {
+        var query = "select person.gender, person.city,count(task.task_name) as 'count' from person\n" +
+                "left join student on person.personId = student.student_id\n" +
+                "join course on course.id = student.course_id\n" +
+                "left join theme  on course.id = theme.course_id and theme.theme_name like '%" + themeName + "%'\n" +
+                "join task on task.theme_id = theme.themeId\n" +
+                "where task.max_score = task.score and length(task_name)>2 and task_name like '%Контрольный вопрос%' and city!='None'\n" +
+                "group by person.gender, person.city;";
+
+        var result = new ArrayList<SolvedTasksByCityGender>();
+
+        try {
+            var resultSet = statmt.executeQuery(query);
+
+            while (resultSet.next()) {
+                var gender = resultSet.getString("gender");
+                var city = resultSet.getString("city");
+                var count = resultSet.getInt("count");
+                result.add(new SolvedTasksByCityGender(gender, city, count));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public static List<SolvedTasksByCityGender> getSolvedTasksByGender(String themeName) {
+        var query = "select person.gender, person.city,count(task.task_name) as 'count' from person\n" +
+                "left join student on person.personId = student.student_id\n" +
+                "join course on course.id = student.course_id\n" +
+                "left join theme  on course.id = theme.course_id and theme.theme_name like '%" + themeName + "%'\n" +
+                "join task on task.theme_id = theme.themeId\n" +
+                "where task.max_score = task.score and task_name not like '%Контрольный вопрос%' and task_name not like '%Контрольные вопросы%' and length(task_name)>2 and city!='None'\n" +
+                "group by person.gender, person.city;";
+
+        var result = new ArrayList<SolvedTasksByCityGender>();
+
+        try {
+            var resultSet = statmt.executeQuery(query);
+
+            while (resultSet.next()) {
+                var gender = resultSet.getString("gender");
+                var city = resultSet.getString("city");
+                var count = resultSet.getInt("count");
+                result.add(new SolvedTasksByCityGender(gender, city, count));
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -219,5 +353,29 @@ public class SqLite {
         conn.close();
 
         System.out.println("Соединения закрыты");
+    }
+}
+
+class SolvedTasksByCityGender {
+    private final String gender;
+    private final String city;
+    private final int count;
+
+    SolvedTasksByCityGender(String gender, String city, int count) {
+        this.gender = gender;
+        this.city = city;
+        this.count = count;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public int getCount() {
+        return count;
     }
 }

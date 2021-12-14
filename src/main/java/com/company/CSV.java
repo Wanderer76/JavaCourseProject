@@ -25,7 +25,7 @@ public class CSV {
         return records;
     }
 
-    public static List<Student> parseStudentsFromCSV(String filename) throws SQLException, ClassNotFoundException {
+    public static List<Student> parseStudentsFromCSV(String filename) {
         List<List<String>> result = readCSV(filename);
 
         List<Student> students = new ArrayList<>();
@@ -49,9 +49,12 @@ public class CSV {
                 var tasks = new ArrayList<Task>();
                 List<String> s = tasksName.subList(startIndex,startIndex + tasksCount.get(j));
                 int temp = startIndex;
+                int taskMaxScore = 0;
+
                 for(var k : s) {
-                    tasks.add(new Task(k,Integer.parseInt(i.get(temp))));
+                    tasks.add(new Task(k,Integer.parseInt(i.get(temp)),Integer.parseInt(result.get(2).get(startIndex+taskMaxScore))));
                     temp++;
+                    taskMaxScore++;
                 }
                 studentTasks.add(new Theme(themes.get(j),tasks,tasks.get(0).getScore(),Integer.parseInt(result.get(2).get(startIndex))));
                 startIndex = startIndex+tasksCount.get(j);

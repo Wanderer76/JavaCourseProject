@@ -1,5 +1,7 @@
 package com.company;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 enum Gender {
@@ -22,7 +24,7 @@ public class Person{
         this.name = name;
         this.surname = surname;
         this.city = "None";
-        this.birthdate = "None";
+        this.birthdate = null;
         this.photo = "None";
         this.vkId = -1000;
         gender = Gender.None;
@@ -66,7 +68,14 @@ public class Person{
     }
 
     public void setBirthdate(String birthdate) {
-        this.birthdate = birthdate;
+        var validator = new SimpleDateFormat("MM.dd.yyyy");
+        try {
+            var date = validator.parse(birthdate);
+            validator.applyPattern("yyyy-MM-dd");
+            this.birthdate = validator.format(date);
+        } catch (ParseException e) {
+            this.birthdate = null;
+        }
     }
 
     public void setCity(String city) {
