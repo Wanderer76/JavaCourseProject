@@ -1,14 +1,12 @@
 package com.company;
 
 import com.google.gson.JsonObject;
-
-import java.sql.SQLException;
 import java.util.List;
 
 public class StudentsUtilities {
 
-    public static List<Student> createStudentsWithVkData(List<JsonObject> vkData) throws SQLException, ClassNotFoundException {
-        List<Student> students = CSV.parseStudentsFromCSV("java-rtf.csv");
+    public static List<Student> createStudentsWithVkData(List<JsonObject> vkData, String filename) {
+        List<Student> students = CSV.parseStudentsFromCSV(filename);
         for (var student : students) {
             var filtered = vkData.stream().filter(a -> a.get("first_name").getAsString().equals(student.getName()) && a.get("last_name").getAsString().equals(student.getSurname())).findFirst();
             if (filtered.isPresent()) {
@@ -33,7 +31,7 @@ public class StudentsUtilities {
                     if (gender == 1) {
                         student.setGender(Gender.Female);
                     }
-                    if(gender == 2){
+                    if (gender == 2) {
                         student.setGender(Gender.Male);
                     }
                 }

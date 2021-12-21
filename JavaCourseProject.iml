@@ -86,5 +86,6 @@
         </SOURCES>
       </library>
     </orderEntry>
+    <orderEntry type="library" name="org.jfree:jfreechart:1.5.3" level="project" />
   </component>
 </module>

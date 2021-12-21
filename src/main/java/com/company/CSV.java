@@ -3,19 +3,19 @@ package com.company;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class CSV {
 
-    private static final List<Integer> tasksCount = Arrays.asList(1,7,9,9,11,8,13,16,7,10,11,3,2,1,1);
+    private static final List<Integer> tasksCount = Arrays.asList(1, 7, 9, 9, 11, 8, 13, 16, 7, 10, 11, 3, 2, 1, 1);
 
-    private static List<List<String>> readCSV(String filename)
-    {
+    private static List<List<String>> readCSV(String filename) {
         List<List<String>> records = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             String line;
-            while ((line = br.readLine()) != null) {
+            while ((line = reader.readLine()) != null) {
                 String[] values = line.split(";");
                 records.add(Arrays.asList(values));
             }
@@ -26,44 +26,49 @@ public class CSV {
     }
 
     public static List<Student> parseStudentsFromCSV(String filename) {
-        List<List<String>> result = readCSV(filename);
+        List<List<String>> parsedCSV = readCSV(filename);
 
         List<Student> students = new ArrayList<>();
-        List<String> themes = new ArrayList<>();
-        List<String> tasksName = new ArrayList<>(result.get(1));
-        for(String theme: result.get(0))
-        {
-            if(theme.length() >1)
-                themes.add(theme);
-        }
+        List<String> themes = getThemes(parsedCSV);
+        ;
+        List<String> tasksName = new ArrayList<>(parsedCSV.get(1));
 
-        for(var i : result.subList(3,result.size()))
-        {
+        for (var i : parsedCSV.subList(3, parsedCSV.size())) {
             String[] fio = i.get(0).split(" ");
-            var person =new Person(fio[1],fio[0]);
+
+            var person = new Person(fio[1], fio[0]);
             var courses = new ArrayList<Course>();
             var studentTasks = new ArrayList<Theme>();
 
             int startIndex = 2;
-            for(var j =0; j<themes.size();j++) {
+            for (var j = 0; j < themes.size(); j++) {
                 var tasks = new ArrayList<Task>();
-                List<String> s = tasksName.subList(startIndex,startIndex + tasksCount.get(j));
-                int temp = startIndex;
-                int taskMaxScore = 0;
+                var tasksOfTheme = tasksName.subList(startIndex, startIndex + tasksCount.get(j));
+                int taskValuePosition = startIndex;
+                int taskMaxScorePosition = 0;
 
-                for(var k : s) {
-                    tasks.add(new Task(k,Integer.parseInt(i.get(temp)),Integer.parseInt(result.get(2).get(startIndex+taskMaxScore))));
-                    temp++;
-                    taskMaxScore++;
+                for (var taskName : tasksOfTheme) {
+                    tasks.add(new Task(taskName, Integer.parseInt(i.get(taskValuePosition)), Integer.parseInt(parsedCSV.get(2).get(startIndex + taskMaxScorePosition))));
+                    taskValuePosition++;
+                    taskMaxScorePosition++;
                 }
-                studentTasks.add(new Theme(themes.get(j),tasks,tasks.get(0).getScore(),Integer.parseInt(result.get(2).get(startIndex))));
-                startIndex = startIndex+tasksCount.get(j);
+                studentTasks.add(new Theme(themes.get(j), tasks, tasks.get(0).getScore(), Integer.parseInt(parsedCSV.get(2).get(startIndex))));
+                startIndex = startIndex + tasksCount.get(j);
             }
 
-            var course = new Course("Java",studentTasks,Integer.parseInt(result.get(2).get(2)),i.get(1));
+            var course = new Course("Java", studentTasks, Integer.parseInt(parsedCSV.get(2).get(2)), i.get(1));
             courses.add(course);
-            students.add(new Student(person,i.get(1),courses));
+            students.add(new Student(person, i.get(1), courses));
         }
         return students;
+    }
+
+    private static List<String> getThemes(List<List<String>> parsedCSV) {
+        var themes = new ArrayList<String>();
+        for (String theme : parsedCSV.get(0)) {
+            if (theme.length() > 1)
+                themes.add(theme);
+        }
+        return themes;
     }
 }

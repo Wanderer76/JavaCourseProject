@@ -1,8 +1,6 @@
 package com.company;
 
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.vk.api.sdk.client.TransportClient;
@@ -16,7 +14,6 @@ import com.vk.api.sdk.objects.users.Fields;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class VkApi {
 
