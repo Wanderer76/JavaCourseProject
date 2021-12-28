@@ -1,11 +1,16 @@
 package com.company;
 
-import java.sql.*;
-import java.text.SimpleDateFormat;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 
 public class SqLite {
@@ -24,7 +29,7 @@ public class SqLite {
     // --------Создание таблицы--------
     public static void createDB() throws SQLException {
 
-        statmt.execute("CREATE TABLE IF NOT EXISTS course\n" +
+        statmt.execute("create table IF NOT EXISTS course\n" +
                 "(\n" +
                 "    id          integer not null\n" +
                 "        primary key autoincrement,\n" +
@@ -33,7 +38,9 @@ public class SqLite {
                 "    courseGroup text    not null,\n" +
                 "    studentId   integer not null\n" +
                 ");");
-        statmt.execute("CREATE TABLE IF NOT EXISTS person(\n" +
+
+        statmt.execute("create table IF NOT EXISTS person\n" +
+                "(\n" +
                 "    personId  integer not null\n" +
                 "        primary key autoincrement,\n" +
                 "    name      text    not null,\n" +
@@ -43,15 +50,19 @@ public class SqLite {
                 "    image     text    not null,\n" +
                 "    vkId      integer not null,\n" +
                 "    gender    integer default 0 not null\n" +
-                ");");
+                ");\n");
 
-        statmt.execute("CREATE TABLE IF NOT EXISTS student(\n" +
+        statmt.execute("create table IF NOT EXISTS student\n" +
+                "(\n" +
                 "    student_id integer not null\n" +
                 "        references person,\n" +
                 "    course_id  integer not null\n" +
-                "        references course\n" +
+                "        references course,\n" +
+                "    \"group\"    TEXT default 'UNKNOWN'\n" +
                 ");");
-        statmt.execute("CREATE TABLE IF NOT EXISTS task(\n" +
+
+        statmt.execute("create table IF NOT EXISTS task\n" +
+                "(\n" +
                 "    id        integer not null\n" +
                 "        primary key autoincrement,\n" +
                 "    task_name text    not null,\n" +
@@ -60,7 +71,9 @@ public class SqLite {
                 "        references theme,\n" +
                 "    max_score integer default 0 not null\n" +
                 ");");
-        statmt.execute("CREATE TABLE IF NOT EXISTS theme(\n" +
+
+        statmt.execute("create table IF NOT EXISTS theme\n" +
+                "(\n" +
                 "    theme_name      text    not null,\n" +
                 "    studentMaxPoint integer not null,\n" +
                 "    maxPoint        integer not null,\n" +
@@ -68,7 +81,7 @@ public class SqLite {
                 "        references course,\n" +
                 "    themeId         integer not null\n" +
                 "        primary key autoincrement\n" +
-                ");");
+                ");\n");
 
         System.out.println("Таблица создана или уже существует.");
     }
@@ -77,23 +90,20 @@ public class SqLite {
     public static boolean writeDB(Student student) throws SQLException {
         var courses = student.getCourses();
 
-
         insertPerson(new String[]{student.getName(), student.getSurname(), student.getCity(), student.getBirthdate(), student.getPhoto(), String.valueOf(student.getVkId()), String.valueOf(student.getGender())});
         var student_id = statmt.executeQuery("SELECT * FROM person WHERE name='" + student.getName() + "' and surname= '" + student.getSurname() + "' and vkId=" + student.getVkId() + ";").getInt("personId");
         var coursesIds = insertCourses(courses, student_id);
 
         for (var id : coursesIds) {
-            var query = "INSERT INTO student (student_id, course_id)\n" +
-                    "values (" + student_id + ", " + id + ");";
+            var query = "INSERT INTO student (student_id, course_id,\"group\")\n" +
+                    "values (" + student_id + ", " + id + ", '"+ student.getGroup()+"');";
             try {
                 statmt.execute(query);
             } catch (SQLException e) {
                 System.out.println(e.getMessage());
                 e.printStackTrace();
             }
-
         }
-
         return false;
     }
 
@@ -284,6 +294,7 @@ public class SqLite {
         }
         return count;
     }
+
     public static List<TasksStats> getCountOfSolvedTasksInTheme(String name, String surname ,String themeName) {
         var result = new ArrayList<TasksStats>();
         /*var query = "select count(*) as 'count' from person\n" +
@@ -386,7 +397,6 @@ public class SqLite {
         return result;
     }
 
-
     public static List<String> getThemes(){
         var query = "select distinct theme_name from theme order by theme_name";
         var result = new ArrayList<String>();
@@ -451,12 +461,22 @@ public class SqLite {
         }
         return result;
     }
-
     // --------Закрытие--------
     public static void closeDB() throws SQLException {
         statmt.close();
         conn.close();
         System.out.println("Соединения закрыты");
+    }
+
+    public static boolean fillDb(List<Student> students) throws SQLException {
+        SqLite.cleanDb();
+        int index = 1;
+        for (var i : students) {
+            SqLite.writeDB(i);
+            System.out.println("Добавлено "+index+" записей");
+            index++;
+        }
+        return true;
     }
 }
 
